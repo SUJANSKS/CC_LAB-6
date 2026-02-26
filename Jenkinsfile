@@ -3,6 +3,15 @@ pipeline {
 
     stages {
 
+        stage('Clean Old Containers & Network') {
+            steps {
+                sh '''
+                docker rm -f backend1 backend2 backend-1 backend-2 nginx || true
+                docker network rm app-network || true
+                '''
+            }
+        }
+
         stage('Build Backend Image') {
             steps {
                 sh '''
@@ -15,7 +24,7 @@ pipeline {
         stage('Create Network') {
             steps {
                 sh '''
-                docker network create app-network || true
+                docker network create app-network
                 '''
             }
         }
@@ -23,7 +32,6 @@ pipeline {
         stage('Deploy Backend Containers') {
             steps {
                 sh '''
-                docker rm -f backend1 backend2 || true
                 docker run -d --name backend1 --network app-network backend-app
                 docker run -d --name backend2 --network app-network backend-app
                 '''
@@ -39,10 +47,9 @@ pipeline {
             }
         }
 
-        stage('Deploy NGINX') {
+        stage('Deploy NGINX Load Balancer') {
             steps {
                 sh '''
-                docker rm -f nginx || true
                 docker run -d \
                   --name nginx \
                   --network app-network \
@@ -55,10 +62,10 @@ pipeline {
 
     post {
         success {
-            echo 'Pipeline executed successfully. Load balancer running on port 8082.'
+            echo 'Pipeline executed successfully. Access app at http://localhost:8082'
         }
         failure {
-            echo 'Pipeline failed. Check console logs.'
+            echo 'Pipeline failed. Check console output.'
         }
     }
 }
